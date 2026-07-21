@@ -1,0 +1,772 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPERADMIN
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum VerificationTier {
+  UNVERIFIED
+  EMAIL_PHONE
+  IDENTITY_VERIFIED
+  HOST_KYC
+}
+
+enum VerificationType {
+  EMAIL
+  PHONE
+  DOCUMENT
+  SELFIE
+}
+
+enum VerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum TargetType {
+  USER
+  POST
+  COMMENT
+  PLAN
+  PROPERTY
+  MESSAGE
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  DISMISSED
+}
+
+enum ConnectionStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+}
+
+enum TravelStyle {
+  ECONOMY
+  COMFORT
+  LUXURY
+  ADVENTURE
+}
+
+enum DepositPolicyType {
+  NONE
+  FIXED
+  PERCENTAGE
+}
+
+enum JoinRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  PAID_PENDING_APPROVAL
+}
+
+enum ConversationType {
+  ONE_TO_ONE
+  GROUP
+}
+
+enum MessageType {
+  TEXT
+  ATTACHMENT
+  SYSTEM
+}
+
+enum FlightOrderStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+}
+
+enum BookingStatus {
+  QUOTE_LOCKED
+  CONFIRMED
+  CANCELLED
+}
+
+enum ShopOrderStatus {
+  PENDING
+  PAID
+  SHIPPED
+  CANCELLED
+}
+
+enum PaymentType {
+  TRIP_DEPOSIT
+  STAY_BOOKING
+  SHOP_ORDER
+  BOOST_PAYMENT
+}
+
+enum LedgerEntryType {
+  DEBIT
+  CREDIT
+}
+
+enum LedgerReferenceType {
+  PAYMENT
+  REFUND
+  TRANSFER
+  PAYOUT
+  COMMISSION
+}
+
+enum OutboxStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+model User {
+  id               String           @id @default(uuid())
+  email            String?          @unique
+  phone            String?          @unique
+  passwordHash     String
+  role             Role             @default(USER)
+  status           UserStatus       @default(ACTIVE)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  profile          Profile?
+  verifications    Verification[]
+  devices          Device[]
+  blocksMade       UserBlock[]      @relation("Blocker")
+  blocksReceived   UserBlock[]      @relation("Blocked")
+  reportsMade      Report[]         @relation("Reporter")
+  connectionsMade  Connection[]     @relation("Requester")
+  connectionsRecv  Connection[]     @relation("Receiver")
+  posts            Post[]
+  reactions        Reaction[]
+  comments         Comment[]
+  commentReactions CommentReaction[]
+  stories          Story[]
+  storyLikes       StoryLike[]
+  storyViews       StoryView[]
+  savedItems       SavedItem[]
+  tripPlans        TripPlan[]
+  participants     Participant[]
+  joinRequests     JoinRequest[]
+  conversationMembers ConversationMember[]
+  flightSearches   FlightSearch[]
+  flightOrders     FlightOrder[]
+  properties       Property[]
+  hotelReservations HotelReservation[]
+  shopOrders       ShopOrder[]
+  paymentCustomer  PaymentCustomer?
+  connectedAccount ConnectedAccount?
+  payments         Payment[]
+  notifications    Notification[]
+  actedNotifications Notification[] @relation("NotificationActor")
+}
+
+model Profile {
+  userId           String           @id
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  handle           String           @unique
+  displayName      String
+  avatarUrl        String?
+  backgroundUrl    String?
+  homeLocation     String?
+  languages        Json?            // Array of strings
+  travelInterests  Json?            // Array of strings
+  preferredStyles  Json?            // Array of strings
+  aboutMe          String?
+  isPublic         Boolean          @default(true)
+  verificationTier VerificationTier @default(UNVERIFIED)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+}
+
+model Verification {
+  id              String             @id @default(uuid())
+  userId          String
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type            VerificationType
+  status          VerificationStatus @default(PENDING)
+  documentUrl     String?
+  selfieUrl       String?
+  rejectionReason String?
+  verifiedAt      DateTime?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+}
+
+model Device {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushToken  String   @unique
+  platform   String   // "ios" | "android"
+  lastActive DateTime @default(now())
+}
+
+model UserBlock {
+  id        String   @id @default(uuid())
+  blockerId String
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blockedId String
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([blockerId, blockedId])
+}
+
+model Report {
+  id           String       @id @default(uuid())
+  reporterId   String
+  reporter     User         @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  targetType   TargetType
+  targetId     String
+  reasonCode   String
+  details      String?
+  evidenceUrl  String?
+  status       ReportStatus @default(PENDING)
+  actionTaken  String?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+}
+
+model Connection {
+  id          String           @id @default(uuid())
+  requesterId String
+  requester   User             @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
+  receiverId  String
+  receiver    User             @relation("Receiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  status      ConnectionStatus @default(PENDING)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@unique([requesterId, receiverId])
+}
+
+model Post {
+  id                   String          @id @default(uuid())
+  userId               String
+  user                 User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text                 String
+  location             String?
+  totalExperienceCost  Float?
+  isBoosted            Boolean         @default(false)
+  originalPostId       String?
+  originalPost         Post?           @relation("PostShares", fields: [originalPostId], references: [id], onDelete: SetNull)
+  shares               Post[]          @relation("PostShares")
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  media                PostMedia[]
+  reactions            Reaction[]
+  comments             Comment[]
+  boostCampaigns       BoostCampaign[]
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model PostMedia {
+  id         String   @id @default(uuid())
+  postId     String
+  post       Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  mediaUrl   String
+  mediaType  String   // "image" | "video"
+  altText    String?
+  orderIndex Int      @default(0)
+
+  @@index([postId])
+}
+
+model Reaction {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId       String
+  post         Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  reactionType String   // "LIKE", "LOVE", "CLAP", etc.
+  createdAt    DateTime @default(now())
+
+  @@unique([userId, postId])
+  @@index([postId])
+}
+
+model Comment {
+  id        String            @id @default(uuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  postId    String
+  post      Post              @relation(fields: [postId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    Comment?          @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[]         @relation("CommentReplies")
+  reactions CommentReaction[]
+  text      String
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([postId])
+  @@index([createdAt])
+}
+
+model CommentReaction {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, commentId])
+}
+
+model Story {
+  id         String      @id @default(uuid())
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mediaUrl   String
+  mediaType  String      // "image" | "video"
+  expiresAt  DateTime
+  isArchived Boolean     @default(false)
+  createdAt  DateTime    @default(now())
+  likes      StoryLike[]
+  views      StoryView[]
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model StoryLike {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, storyId])
+}
+
+model StoryView {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  storyId   String
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, storyId])
+  @@index([storyId])
+}
+
+model SavedItem {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  targetType String   // "POST" | "PLAN" | "STAY" | "FLIGHT"
+  targetId   String
+  createdAt  DateTime @default(now())
+
+  @@unique([userId, targetType, targetId])
+}
+
+model BoostCampaign {
+  id               String     @id @default(uuid())
+  targetType       String     // "POST" | "PLAN"
+  targetId         String
+  budgetCap        Float
+  spendAccumulated Float      @default(0.0)
+  impressionPacing Int        @default(1) // impressions per hour limit
+  isLabeled        Boolean    @default(true)
+  status           String     @default("ACTIVE") // ACTIVE, PAUSED, COMPLETED
+  post             Post?      @relation(fields: [targetId], references: [id], map: "boost_post_fk")
+  tripPlan         TripPlan?  @relation(fields: [targetId], references: [id], map: "boost_trip_fk")
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+}
+
+model TripPlan {
+  id            String          @id @default(uuid())
+  organizerId   String
+  organizer     User            @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  title         String
+  details       String
+  imageUrl      String?
+  destinations  Json            // Array of destinations
+  dates         Json            // Start & End dates
+  travelStyle   TravelStyle
+  capacity      Int
+  estimatedCost Float
+  organizerRules String?
+  status        String          @default("ACTIVE") // ACTIVE, CANCELLED
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  itinerary     ItineraryItem[]
+  participants  Participant[]
+  joinRequests  JoinRequest[]
+  depositPolicy DepositPolicy?
+  boostCampaigns BoostCampaign[]
+}
+
+model ItineraryItem {
+  id          String   @id @default(uuid())
+  tripPlanId  String
+  tripPlan    TripPlan @relation(fields: [tripPlanId], references: [id], onDelete: Cascade)
+  dayIndex    Int
+  timeOffset  String?  // e.g. "09:00"
+  title       String
+  description String?
+  location    String?
+  cost        Float?
+}
+
+model Participant {
+  id         String      @id @default(uuid())
+  tripPlanId String
+  tripPlan   TripPlan    @relation(fields: [tripPlanId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       String      @default("MEMBER") // ORGANIZER, CO_ORGANIZER, MEMBER
+  status     String      @default("ACTIVE") // ACTIVE, CANCELLED
+  joinedAt   DateTime    @default(now())
+
+  @@unique([tripPlanId, userId])
+}
+
+model JoinRequest {
+  id                 String            @id @default(uuid())
+  tripPlanId         String
+  tripPlan           TripPlan          @relation(fields: [tripPlanId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message            String?
+  depositPaidAmount  Float             @default(0.0)
+  status             JoinRequestStatus @default(PENDING)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@unique([tripPlanId, userId])
+}
+
+model DepositPolicy {
+  id         String            @id @default(uuid())
+  tripPlanId String            @unique
+  tripPlan   TripPlan          @relation(fields: [tripPlanId], references: [id], onDelete: Cascade)
+  type       DepositPolicyType @default(NONE)
+  amount     Float             @default(0.0)
+  refundTerms String?
+}
+
+model Conversation {
+  id          String               @id @default(uuid())
+  type        ConversationType     @default(ONE_TO_ONE)
+  tripPlanId  String?              // Nullable link to trip plan
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  members     ConversationMember[]
+  messages    Message[]
+}
+
+model ConversationMember {
+  id                 String       @id @default(uuid())
+  conversationId     String
+  conversation       Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  userId             String
+  user               User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastReadMessageId  String?
+  joinedAt           DateTime     @default(now())
+
+  @@unique([conversationId, userId])
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String
+  text           String?
+  messageType    MessageType  @default(TEXT)
+  createdAt      DateTime     @default(now())
+  attachments    Attachment[]
+}
+
+model Attachment {
+  id        String  @id @default(uuid())
+  messageId String
+  message   Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  fileUrl   String
+  fileType  String  // "image" | "video" | "file"
+  fileName  String?
+  fileSize  Int?
+}
+
+model FlightSearch {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  origin          String
+  destination     String
+  departureDate   String
+  returnDate      String?
+  cabinClass      String
+  passengersCount Int
+  results         Json     // Duffel cached offers
+  createdAt       DateTime @default(now())
+}
+
+model FlightOrder {
+  id                String            @id @default(uuid())
+  userId            String
+  user              User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  duffelOrderId     String            @unique
+  bookingReference  String
+  ticketStatus      FlightOrderStatus @default(PENDING)
+  totalAmount       Float
+  currency          String
+  itinerarySnapshot Json
+  passengerDetails  Json
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+}
+
+model Property {
+  id             String             @id @default(uuid())
+  hostId         String
+  host           User               @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  name           String
+  location       String
+  address        String
+  description    String
+  imageUrl       String?            // Custom Admin Image URL
+  amenities      Json?              // List of amenities
+  policies       Json?              // Rules, cancellation
+  taxesAndFees   Json?              // Tax info
+  commissionRate Float              @default(0.05)
+  isVerified     Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  units          PropertyUnit[]
+  reservations   HotelReservation[]
+}
+
+model PropertyUnit {
+  id                String             @id @default(uuid())
+  propertyId        String
+  property          Property           @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name              String
+  roomType          String
+  maxOccupancy      Int
+  basePricePerNight Float
+  amenities         Json?
+  inventoryCount    Int
+  ratePlans         RatePlan[]
+  inventoryDays     InventoryDay[]
+  reservations      HotelReservation[]
+}
+
+model RatePlan {
+  id             String       @id @default(uuid())
+  propertyUnitId String
+  propertyUnit   PropertyUnit @relation(fields: [propertyUnitId], references: [id], onDelete: Cascade)
+  name           String
+  cancelPolicy   String
+  priceMultiplier Float       @default(1.0)
+}
+
+model InventoryDay {
+  id             String       @id @default(uuid())
+  propertyUnitId String
+  propertyUnit   PropertyUnit @relation(fields: [propertyUnitId], references: [id], onDelete: Cascade)
+  date           String       // "YYYY-MM-DD"
+  availableCount Int
+  price          Float
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([propertyUnitId, date])
+}
+
+model HotelReservation {
+  id             String        @id @default(uuid())
+  guestId        String
+  guest          User          @relation(fields: [guestId], references: [id], onDelete: Cascade)
+  propertyId     String
+  property       Property      @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  propertyUnitId String
+  propertyUnit   PropertyUnit  @relation(fields: [propertyUnitId], references: [id], onDelete: Cascade)
+  checkIn        String        // "YYYY-MM-DD"
+  checkOut       String        // "YYYY-MM-DD"
+  bookingStatus  BookingStatus @default(QUOTE_LOCKED)
+  totalAmount    Float
+  commissionPaid Float
+  idempotencyKey String        @unique
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+}
+
+model ShopProduct {
+  id          String           @id @default(uuid())
+  name        String
+  description String
+  category    String
+  imageUrl    String?          // Custom Admin Image URL
+  isPublished Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  variants    ProductVariant[]
+}
+
+model ProductVariant {
+  id         String     @id @default(uuid())
+  productId  String
+  product    ShopProduct @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name       String
+  price      Float
+  sku        String     @unique
+  stockCount Int
+  orderItems OrderItem[]
+}
+
+model ShopOrder {
+  id              String          @id @default(uuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  totalAmount     Float
+  taxAmount       Float
+  shippingAmount  Float
+  status          ShopOrderStatus @default(PENDING)
+  paymentIntentId String?
+  shippingAddress Json
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  items           OrderItem[]
+}
+
+model OrderItem {
+  id        String         @id @default(uuid())
+  orderId   String
+  order     ShopOrder      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantity  Int
+  price     Float
+}
+
+model PaymentCustomer {
+  id               String   @id @default(uuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeCustomerId String   @unique
+  createdAt        DateTime @default(now())
+}
+
+model ConnectedAccount {
+  id              String   @id @default(uuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stripeAccountId String   @unique
+  detailsSubmitted Boolean  @default(false)
+  payoutsEnabled  Boolean  @default(false)
+  createdAt       DateTime @default(now())
+}
+
+model Payment {
+  id              String      @id @default(uuid())
+  userId          String
+  user            User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount          Float
+  currency        String      @default("USD")
+  status          String      // "PENDING" | "SUCCEEDED" | "FAILED"
+  paymentIntentId String      @unique
+  type            PaymentType
+  idempotencyKey  String      @unique
+  createdAt       DateTime    @default(now())
+  refunds         Refund[]
+  transfers       Transfer[]
+}
+
+model Refund {
+  id             String   @id @default(uuid())
+  paymentId      String
+  payment        Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  amount         Float
+  stripeRefundId String   @unique
+  status         String
+  createdAt      DateTime @default(now())
+}
+
+model Transfer {
+  id                  String   @id @default(uuid())
+  paymentId           String
+  payment             Payment  @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  destinationAccountId String
+  amount              Float
+  stripeTransferId    String   @unique
+  status              String
+  createdAt           DateTime @default(now())
+}
+
+model Payout {
+  id                 String   @id @default(uuid())
+  connectedAccountId String
+  amount             Float
+  stripePayoutId     String   @unique
+  status             String
+  createdAt          DateTime @default(now())
+}
+
+model LedgerEntry {
+  id            String              @id @default(uuid())
+  accountId     String              // "PLATFORM" or Stripe Account ID or User ID
+  entryType     LedgerEntryType
+  amount        Float
+  currency      String              @default("USD")
+  balanceAfter  Float
+  referenceType LedgerReferenceType
+  referenceId   String
+  createdAt     DateTime            @default(now())
+}
+
+model WebhookEvent {
+  id          String   @id @default(uuid())
+  provider    String   // "stripe" | "duffel" | "expedia"
+  eventType   String
+  payload     Json
+  isProcessed Boolean  @default(false)
+  createdAt   DateTime @default(now())
+}
+
+model OutboxEvent {
+  id        String       @id @default(uuid())
+  eventType String
+  payload   Json
+  status    OutboxStatus @default(PENDING)
+  error     String?
+  createdAt DateTime     @default(now())
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actorId   String
+  actor     User     @relation("NotificationActor", fields: [actorId], references: [id], onDelete: Cascade)
+  type      String   // "LIKE" | "COMMENT" | "SHARE" | "STORY_LIKE"
+  title     String
+  message   String
+  targetId  String?  // postId or storyId
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
