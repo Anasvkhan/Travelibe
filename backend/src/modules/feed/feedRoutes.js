@@ -26,6 +26,16 @@ router.get('/posts', authenticateToken, async (req, res) => {
   }
 });
 
+// Get Saved Posts
+router.get('/saved', authenticateToken, async (req, res) => {
+  try {
+    const savedPosts = await FeedService.getSavedPosts(req.user.id);
+    res.json(savedPosts);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
 // Edit Post
 router.put('/posts/:id', authenticateToken, async (req, res) => {
   try {

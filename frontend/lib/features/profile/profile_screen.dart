@@ -17,6 +17,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   bool _isLoading = true;
   Map<String, dynamic> _profile = {};
   List<dynamic> _userPosts = [];
+  List<dynamic> _savedPosts = [];
 
   @override
   void initState() {
@@ -38,8 +39,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
         try {
           final postsRes = await _apiClient.dio.get('/feed/posts/user/${_profile['userId']}');
           _userPosts = postsRes.data;
+
+          final savedRes = await _apiClient.dio.get('/feed/saved');
+          _savedPosts = savedRes.data;
         } catch (e) {
-          debugPrint('[ProfileScreen] Error loading user posts: $e');
+          debugPrint('[ProfileScreen] Error loading user posts or saved posts: $e');
         }
       } else {
         // Fetch target user's posts & profile info
@@ -466,7 +470,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           tabs: [
                             Tab(text: 'Posts (${_userPosts.length})'),
                             const Tab(text: 'Trips (0)'),
-                            const Tab(text: 'Saved (0)'),
+                            Tab(text: 'Saved (${_savedPosts.length})'),
                           ],
                         ),
                         SizedBox(
@@ -514,7 +518,43 @@ class _ProfileScreenState extends State<ProfileScreen> {
                               // Trips Tab
                               const Center(child: Text('No active trips planned yet.', style: TextStyle(color: Colors.grey))),
                               // Saved Tab
-                              const Center(child: Text('No saved items yet.', style: TextStyle(color: Colors.grey))),
+                              _savedPosts.isEmpty
+                                  ? const Center(child: Text('No saved items yet.', style: TextStyle(color: Colors.grey)))
+                                  : GridView.builder(
+                                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                                        crossAxisCount: 3,
+                                        crossAxisSpacing: 4,
+                                        mainAxisSpacing: 4,
+                                      ),
+                                      padding: const EdgeInsets.symmetric(vertical: 16),
+                                      itemCount: _savedPosts.length,
+                                      itemBuilder: (context, idx) {
+                                        final post = _savedPosts[idx];
+                                        final media = post['media'] as List<dynamic>? ?? [];
+                                        final String? imgUrl = media.isNotEmpty ? media[0]['mediaUrl'] : null;
+
+                                        return Container(
+                                          decoration: BoxDecoration(
+                                            color: Colors.grey.shade100,
+                                            borderRadius: BorderRadius.circular(8),
+                                            image: imgUrl != null
+                                                ? DecorationImage(image: NetworkImage(imgUrl), fit: BoxFit.cover)
+                                                : null,
+                                          ),
+                                          alignment: Alignment.center,
+                                          padding: const EdgeInsets.all(4),
+                                          child: imgUrl == null
+                                              ? Text(
+                                                  post['text'] ?? '',
+                                                  maxLines: 3,
+                                                  overflow: TextOverflow.ellipsis,
+                                                  style: const TextStyle(fontSize: 10, color: Colors.black87),
+                                                  textAlign: TextAlign.center,
+                                                )
+                                              : null,
+                                        );
+                                      },
+                                    ),
                             ],
                           ),
                         ),

@@ -22,7 +22,7 @@ export const config = {
   awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID || '',
   awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || '',
   smtpUser: process.env.SMTP_USER || 'anusag44@gmail.com',
-  smtpPass: process.env.SMTP_PASS || 'wrfn kmva qbfs qzwr',
+  smtpPass: process.env.SMTP_PASS || 'kyjc ppou kpsz mlst',
 };
 
 export default config;

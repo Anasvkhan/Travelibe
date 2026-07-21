@@ -118,15 +118,15 @@ router.post('/reservations', authenticateToken, async (req, res) => {
       });
 
       if (user && user.email && unit) {
-        await EmailService.sendBookingConfirmationEmail(user.email, {
+        EmailService.sendBookingConfirmationEmail(user.email, {
           propertyName: unit.property.name,
           checkIn,
           checkOut,
           amount: reservation.totalAmount,
-        });
+        }).catch((emailErr) => console.error('Failed to send booking confirmation email:', emailErr));
       }
-    } catch (emailErr) {
-      console.error('Failed to send booking confirmation email:', emailErr);
+    } catch (err) {
+      console.error('Failed to fetch user/unit for confirmation email:', err);
     }
 
     res.status(201).json(reservation);

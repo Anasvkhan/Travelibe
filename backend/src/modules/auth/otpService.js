@@ -35,13 +35,11 @@ export class OtpService {
       });
     }
 
-    // Send the email
-    try {
-      await EmailService.sendOtpEmail(email, otp);
-      console.log(`[OtpService] OTP email sent successfully to ${email}. Code: ${otp}`);
-    } catch (err) {
-      console.warn(`[OtpService] Failed to send real SMTP email. Code: ${otp}. Error:`, err.message);
-    }
+    // Send the email in the background so it doesn't block the response
+    EmailService.sendOtpEmail(email, otp)
+      .then(() => console.log(`[OtpService] OTP email sent successfully to ${email}. Code: ${otp}`))
+      .catch((err) => console.warn(`[OtpService] Failed to send real SMTP email. Code: ${otp}. Error:`, err.message));
+
     console.log(`\n=== DEVELOPMENT OTP CODE FOR ${email} IS: ${otp} ===\n`);
     return true;
   }

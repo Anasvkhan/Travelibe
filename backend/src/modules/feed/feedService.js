@@ -177,6 +177,49 @@ export class FeedService {
     return formattedPosts.slice(0, parseInt(limit, 10));
   }
 
+  static async getSavedPosts(userId) {
+    const savedItems = await prisma.savedItem.findMany({
+      where: { userId, targetType: 'POST' },
+      select: { targetId: true },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (savedItems.length === 0) return [];
+    const savedPostIds = savedItems.map((s) => s.targetId);
+
+    const posts = await prisma.post.findMany({
+      where: { id: { in: savedPostIds } },
+      include: {
+        media: true,
+        reactions: { include: { user: { select: { id: true, profile: true } } } },
+        comments: { include: { user: { select: { id: true, profile: true } } } },
+        shares: true,
+        originalPost: {
+          include: {
+            user: { select: { id: true, profile: true } },
+            media: true,
+          },
+        },
+        user: { select: { id: true, email: true, profile: true } },
+      },
+    });
+
+    const postsMap = new Map(posts.map(p => [p.id, p]));
+    const orderedPosts = savedPostIds.map(id => postsMap.get(id)).filter(p => p !== undefined);
+
+    return orderedPosts.map((post) => {
+      const isLikedByMe = post.reactions.some((r) => r.userId === userId);
+      return {
+        ...post,
+        likeCount: post.reactions.length,
+        commentCount: post.comments.length,
+        shareCount: post.shares.length,
+        isLikedByMe,
+        isSavedByMe: true,
+      };
+    });
+  }
+
   static async getUserPosts(userId, currentUserId) {
     const posts = await prisma.post.findMany({
       where: { userId },
