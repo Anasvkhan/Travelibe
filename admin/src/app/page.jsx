@@ -22,7 +22,11 @@ import {
   Calendar
 } from 'lucide-react';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || API_BASE_URL;
+let envUrl = process.env.NEXT_PUBLIC_API_URL;
+if (envUrl && !envUrl.startsWith('http')) {
+  envUrl = 'https://' + envUrl;
+}
+const API_BASE_URL = envUrl || 'http://localhost:9000';
 
 const popularCountries = [
   "Bali, Indonesia",
