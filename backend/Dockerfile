@@ -2,6 +2,9 @@ FROM node:22-slim
 
 WORKDIR /app
 
+# Install openssl for Prisma compatibility
+RUN apt-get update -y && apt-get install -y openssl
+
 COPY package*.json ./
 COPY prisma ./prisma/
 
