@@ -3,7 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class WebSocketClient {
   io.Socket? _socket;
-  static const String wsUrl = 'http://localhost:9000';
+  static const String wsUrl = 'https://travelibe-production.up.railway.app';
 
   // Callbacks
   void Function(Map<String, dynamic> message)? onMessageReceived;

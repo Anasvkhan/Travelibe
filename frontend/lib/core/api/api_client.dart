@@ -4,7 +4,7 @@ import 'package:uuid/uuid.dart';
 
 class ApiClient {
   late final Dio dio;
-  static const String baseUrl = 'http://192.168.18.54:9000/api';
+  static const String baseUrl = 'https://travelibe-production.up.railway.app/api';
 
   ApiClient() {
     dio = Dio(BaseOptions(
