@@ -22,6 +22,8 @@ import {
   Calendar
 } from 'lucide-react';
 
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || API_BASE_URL;
+
 const popularCountries = [
   "Bali, Indonesia",
   "Spain",
@@ -118,7 +120,7 @@ export default function AdminDashboard() {
     e.preventDefault();
     setAuthError('');
     try {
-      const res = await fetch('http://localhost:9000/api/auth/login', {
+      const res = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -149,7 +151,7 @@ export default function AdminDashboard() {
     loadProperties();
     loadProducts();
 
-    const socket = io('http://localhost:9000', {
+    const socket = io(API_BASE_URL, {
       query: { token },
       transports: ['websocket']
     });
@@ -179,7 +181,7 @@ export default function AdminDashboard() {
 
   const loadProperties = async () => {
     try {
-      const res = await fetch('http://localhost:9000/api/stays/admin/properties', {
+      const res = await fetch(`${API_BASE_URL}/api/stays/admin/properties`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -193,7 +195,7 @@ export default function AdminDashboard() {
 
   const loadProducts = async () => {
     try {
-      const res = await fetch('http://localhost:9000/api/shop/products', {
+      const res = await fetch(`${API_BASE_URL}/api/shop/products`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -238,7 +240,7 @@ export default function AdminDashboard() {
     formData.append('file', file);
 
     try {
-      const res = await fetch('http://localhost:9000/api/upload/media', {
+      const res = await fetch(`${API_BASE_URL}/api/upload/media`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -272,7 +274,7 @@ export default function AdminDashboard() {
     }
 
     try {
-      const res = await fetch('http://localhost:9000/api/upload/media-multiple', {
+      const res = await fetch(`${API_BASE_URL}/api/upload/media-multiple`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`
@@ -328,7 +330,7 @@ export default function AdminDashboard() {
     if (!selectedUnit || !calendarForm.startDate || !calendarForm.endDate) return;
 
     try {
-      const res = await fetch(`http://localhost:9000/api/stays/units/${selectedUnit.id}/calendar`, {
+      const res = await fetch(`${API_BASE_URL}/api/stays/units/${selectedUnit.id}/calendar`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -379,8 +381,8 @@ export default function AdminDashboard() {
 
     try {
       const url = editingPropertyId 
-        ? `http://localhost:9000/api/stays/properties/${editingPropertyId}`
-        : 'http://localhost:9000/api/stays/properties/consolidated';
+        ? `${API_BASE_URL}/api/stays/properties/${editingPropertyId}`
+        : `${API_BASE_URL}/api/stays/properties/consolidated`;
       
       const method = editingPropertyId ? 'PUT' : 'POST';
 
@@ -449,7 +451,7 @@ export default function AdminDashboard() {
   const handleDeleteProperty = async (id) => {
     if (!confirm('Are you sure you want to delete this property inventory?')) return;
     try {
-      const res = await fetch(`http://localhost:9000/api/stays/properties/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/stays/properties/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -468,8 +470,8 @@ export default function AdminDashboard() {
 
     try {
       const url = editingProductId 
-        ? `http://localhost:9000/api/shop/products/${editingProductId}`
-        : 'http://localhost:9000/api/shop/products';
+        ? `${API_BASE_URL}/api/shop/products/${editingProductId}`
+        : `${API_BASE_URL}/api/shop/products`;
       
       const method = editingProductId ? 'PUT' : 'POST';
 
@@ -543,7 +545,7 @@ export default function AdminDashboard() {
   const handleDeleteProduct = async (id) => {
     if (!confirm('Are you sure you want to delete this product?')) return;
     try {
-      const res = await fetch(`http://localhost:9000/api/shop/products/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/api/shop/products/${id}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
